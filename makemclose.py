@@ -7,6 +7,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.action_chains import ActionChains
 
 def typeThere(un, where):
     for k in un:
@@ -18,22 +19,34 @@ def eraseThere(un, where):
         where.send_keys(Keys.BACKSPACE)
     time.sleep(2)
 
-def findExact(driver, un):
-    element = WebDriverWait(driver, 60).until(EC.presence_of_element_located((By.XPATH, f"//*[text()='{un}']")))
-    element.scrollIntoView()
-    element.click()
+def findExact(driver, mouse, un):
+    element = WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.XPATH, f"//span[text()='{un}']")))
+    driver.execute_script("arguments[0].scrollIntoView();", element)
+    mouse.move_to_element(element).click().perform()
     time.sleep(3)
 
 USERNAME = input("Username: ")
 PASSWORD = getpass.getpass("Password: ")
 
 driver = uc.Chrome()
+driver.maximize_window()
+mouse = ActionChains(driver)
 driver.get("https://www.instagram.com/")
 
-os.makedirs(f"/{datetime.date.today()}/{USERNAME}", exist_ok=True)
+os.makedirs(f"{datetime.date.today()}/{USERNAME}", exist_ok=True)
 
-username = WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.CSS_SELECTOR, "input[name='username']")))
-password = driver.find_element(By.CSS_SELECTOR, "input[name='password']")
+username = WebDriverWait(driver, 30).until(
+    EC.any_of(
+        EC.presence_of_element_located((By.CSS_SELECTOR, "input[name='username']")),
+        EC.presence_of_element_located((By.CSS_SELECTOR, "input[name='email']"))
+    )
+)
+password = WebDriverWait(driver, 30).until(
+    EC.any_of(
+        EC.presence_of_element_located((By.CSS_SELECTOR, "input[name='password']")),
+        EC.presence_of_element_located((By.CSS_SELECTOR, "input[name='pass']"))
+    )
+)
 
 username.send_keys(USERNAME)
 password.send_keys(PASSWORD)
@@ -46,7 +59,7 @@ CODE = input("Code de vérification: ")
 code.send_keys(CODE)
 code.send_keys(Keys.RETURN)
 
-WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.CSS_SELECTOR, "div[role='button']"))).click()
+time.sleep(5)
 print("Logged in")
 
 time.sleep(15)
@@ -63,14 +76,14 @@ scount = 0
 while fcount > scount:
     for x in range(1000):
         scrolldiv.send_keys(Keys.ARROW_DOWN)
-    felements = driver.find_elements(By.XPATH, '/html/body/div[4]/div[2]/div/div/div[1]/div/div[2]/div/div/div/div/div[2]/div/div/div[3]/div[1]/div/div/div/div/div/div[2]/div/div/div/div[1]/span/div/a/div/div/span')
+    felements = driver.find_elements(By.XPATH, '/html/body/div[4]/div[2]/div/div/div[1]/div/div[2]/div/div/div/div/div[2]/div/div/div[3]/div/div/div/div/div/div/div[2]/div/div/div/div[1]')
     scount = len(felements)
 
 
 followers = [follower.text for follower in felements]
-print(f'You\'ve collected {len(followers)} follower usernames')
+print(f'You\'ve collected {len(followers)} usernames')
 
-with open(f"/{datetime.date.today()}/{USERNAME}/followers.txt", "w") as f:
+with open(f"{datetime.date.today()}/{USERNAME}/followers.txt", "w") as f:
     f.write("\n".join(followers))
 
 driver.get("https://www.instagram.com/accounts/close_friends/")
@@ -78,11 +91,11 @@ time.sleep(5)
 
 search_section = WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.CSS_SELECTOR, "input[placeholder='Search']")))
 failed = []
-for uname in followers:
+for uname in followers[942:]:
     try:
         typeThere(uname, search_section)
         time.sleep(2)
-        findExact(driver, uname)
+        findExact(driver, mouse, uname)
         time.sleep(3)
     except:
         print(f"Couldn't add {uname}")
@@ -94,7 +107,7 @@ print("Done!")
 
 if failed:
     print(f'Failed to add {len(failed)} followers')
-    with open(f"/{datetime.date.today()}/{USERNAME}/failed.txt", "w") as f:
+    with open(f"{datetime.date.today()}/{USERNAME}/failed.txt", "w") as f:
         f.write("\n".join(failed))
 else:
     print("All followers added")
